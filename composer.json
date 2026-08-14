@@ -1,0 +1,21 @@
+{
+	"name": "pewresearch/prc-elasticpress",
+	"description": "PRC Platform integration layer for ElasticPress (factoids index, custom mappings, etc.).",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require": {
+		"php": ">=8.2",
+		"automattic/jetpack-autoloader": "^5.0"
+	},
+	"config": {
+		"allow-plugins": {
+			"composer/installers": true,
+			"automattic/jetpack-autoloader": true
+		},
+		"platform": {
+			"php": "8.4.0"
+		}
+	},
+	"minimum-stability": "dev",
+	"prefer-stable": true
+}

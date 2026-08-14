@@ -1,0 +1,11 @@
+.wp-block-prc-ep-facets-context-provider {
+	.is-processing {
+		opacity: 0.5;
+		pointer-events: none;
+	}
+	&.no-posts {
+		.hide-if__no-publications {
+			display: none;
+		}
+	}
+}

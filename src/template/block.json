@@ -1,0 +1,94 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "prc-ep/facet-template",
+	"version": "2.5.0",
+	"title": "Facet Template",
+	"category": "theme",
+	"description": "Construct a facet interface using its slug, type, and label as a block. Depending on the type, the block will serve as a template for rendering repeated facet values. For instance, a checkbox facet will display a checkbox for each value, a radio facet will show a radio button for each value, and a dropdown facet will present a dropdown with the values.",
+	"attributes": {
+		"facetName": {
+			"type": "string",
+			"default": ""
+		},
+		"facetType": {
+			"type": "string",
+			"enum": ["checkbox", "radio", "dropdown", "range", "search"]
+		},
+		"facetLabel": {
+			"type": "string"
+		},
+		"facetLimit": {
+			"type": "number",
+			"default": 10
+		},
+		"interactiveNamespace": {
+			"type": "string",
+			"default": "prc-ep/facets-context-provider"
+		}
+	},
+	"supports": {
+		"anchor": true,
+		"html": false,
+		"interactivity": true,
+		"spacing": {
+			"blockGap": true,
+			"margin": ["top", "bottom"],
+			"padding": true,
+			"__experimentalDefaultControls": {
+				"padding": true
+			}
+		},
+		"__experimentalBorder": {
+			"color": true,
+			"width": true,
+			"radius": true
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalFontFamily": true,
+			"__experimentalFontWeight": true,
+			"__experimentalFontStyle": true,
+			"__experimentalTextTransform": true,
+			"__experimentalTextDecoration": true,
+			"__experimentalLetterSpacing": true,
+			"__experimentalDefaultControls": {
+				"fontSize": true,
+				"__experimentalFontFamily": true
+			}
+		}
+	},
+	"selectors": {
+		"root": ".wp-block-prc-ep-facet-template",
+		"typography": "h5"
+	},
+	"usesContext": [
+		"postType",
+		"templateSlug",
+		"previewPostType",
+		"facetsContextProvider"
+	],
+	"providesContext": {
+		"prc-ep/template/facetType": "facetType",
+		"prc-ep/template/facetName": "facetName",
+		"prc-ep/template/facetLabel": "facetLabel"
+	},
+	"styles": [
+		{
+			"name": "default",
+			"label": "Default",
+			"isDefault": true
+		},
+		{
+			"name": "no-label",
+			"label": "No Label"
+		}
+	],
+	"ancestor": ["prc-ep/facets-context-provider"],
+	"textdomain": "facet-template",
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"viewScriptModule": "file:./view.js"
+}

@@ -1,0 +1,37 @@
+{
+	"name": "@prc/elasticpress",
+	"version": "2.0.1",
+	"description": "Canonical ElasticPress integration for PRC Platform: search hardening, faceted filtering, blocks, and VIP Search configuration.",
+	"author": {
+		"name": "SRubenstein",
+		"email": "srubenstein@[REDACTED]"
+	},
+	"license": "GPL-2.0-or-later",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/pewresearch/prc-elasticpress.git"
+	},
+	"keywords": [
+		"wordpress",
+		"plugin",
+		"facets",
+		"elasticpress",
+		"search",
+		"filtering",
+		"blocks",
+		"gutenberg"
+	],
+	"scripts": {
+		"build": "wp-scripts build --experimental-modules --webpack-copy-php && wp-scripts build-blocks-manifest",
+		"start": "wp-scripts build-blocks-manifest; wp-scripts start --experimental-modules --webpack-copy-php"
+	},
+	"devDependencies": {
+		"@wordpress/scripts": "^31.4.0"
+	},
+	"dependencies": {
+		"@prc/components": "*",
+		"@prc/functions": "*",
+		"@prc/icons": "*",
+		"@wordpress/icons": "^10.30.0"
+	}
+}

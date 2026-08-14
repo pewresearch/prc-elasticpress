@@ -1,0 +1,57 @@
+
+> @prc/elasticpress@2.0.1 build
+> wp-scripts build --experimental-modules --webpack-copy-php && wp-scripts build-blocks-manifest
+
+assets by path [1m[32msearch-relevancy/[39m[22m 5.67 KiB 9 assets
+assets by path [1m[32mtemplate/[39m[22m 22.8 KiB
+  assets by chunk 7.89 KiB (name: template/index) 4 assets
+  assets by chunk 4.14 KiB (name: template/style-index) 2 assets
+  + 2 assets
+assets by path [1m[32mcontext-provider/[39m[22m 10.4 KiB
+  assets by path [1m[32mcontext-provider/*.php[39m[22m 6.32 KiB 2 assets
+  assets by chunk 354 bytes (id hint: style) 2 assets
+  + 2 assets
+assets by path [1m[32mresults-info/[39m[22m 4.83 KiB
+  assets by path [1m[32mresults-info/*.php[39m[22m 1.89 KiB 3 assets
+  asset [1m[32mresults-info/index.js[39m[22m 1.56 KiB [1m[32m[emitted][39m[22m [1m[32m[minimized][39m[22m (name: results-info/index)
+  asset [1m[32mresults-info/block.json[39m[22m 1.38 KiB [1m[32m[emitted][39m[22m [from: src/results-info/block.json] [1m[32m[copied][39m[22m
+Entrypoint [1mcontext-provider/index[39m[22m 3.59 KiB = [1m[32mcontext-provider/style-index.css[39m[22m 177 bytes [1m[32mcontext-provider/style-index-rtl.css[39m[22m 177 bytes [1m[32mcontext-provider/index.js[39m[22m 3.05 KiB [1m[32mcontext-provider/index.asset.php[39m[22m 199 bytes
+Entrypoint [1mresults-info/index[39m[22m 1.7 KiB = [1m[32mresults-info/index.js[39m[22m 1.56 KiB [1m[32mresults-info/index.asset.php[39m[22m 148 bytes
+Entrypoint [1msearch-relevancy/index[39m[22m 2.8 KiB = 6 assets
+Entrypoint [1mtemplate/index[39m[22m 12 KiB = 6 assets
+orphan modules 29.1 KiB (javascript) 4.58 KiB (runtime) [1m[33m[orphan][39m[22m 61 modules
+runtime modules 8.64 KiB 13 modules
+built modules 2.46 KiB (css/mini-extract) 28.5 KiB (javascript) [1m[33m[built][39m[22m
+  cacheable modules 2.46 KiB
+    modules by path [1m./src/search-relevancy/[39m[22m 155 bytes 2 modules
+    modules by path [1m./src/template/[39m[22m 2.14 KiB
+      css ../../node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[3].use[1]!../../node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[3].use[2]!../../node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[3].use[3]![1m./src/template/style.scss[39m[22m 2.07 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+      css ../../node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[3].use[1]!../../node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[3].use[2]!../../node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[3].use[3]![1m./src/template/editor.scss[39m[22m 74 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+    css ../../node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[3].use[1]!../../node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[3].use[2]!../../node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[3].use[3]![1m./src/context-provider/style.scss[39m[22m 176 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+  javascript modules 28.5 KiB
+    [1m./src/context-provider/index.js + 13 modules[39m[22m 6.04 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+    [1m./src/results-info/index.js + 7 modules[39m[22m 3.72 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+    [1m./src/search-relevancy/index.js + 7 modules[39m[22m 4.54 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+    [1m./src/template/index.js + 18 modules[39m[22m 14.2 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 20029 ms
+
+assets by path [1m[32mtemplate/[39m[22m 10.1 KiB
+  asset [1m[32mtemplate/view.js[39m[22m 9.94 KiB [1m[32m[emitted][39m[22m [javascript module] [1m[32m[minimized][39m[22m (name: template/view)
+  asset [1m[32mtemplate/view.asset.php[39m[22m 203 bytes [1m[32m[emitted][39m[22m (name: template/view)
+assets by path [1m[32msearch-relevancy/[39m[22m 868 bytes
+  asset [1m[32msearch-relevancy/view.js[39m[22m 738 bytes [1m[32m[emitted][39m[22m [javascript module] [1m[32m[minimized][39m[22m (name: search-relevancy/view)
+  asset [1m[32msearch-relevancy/view.asset.php[39m[22m 130 bytes [1m[32m[emitted][39m[22m (name: search-relevancy/view)
+assets by path [1m[32mresults-info/[39m[22m 513 bytes
+  asset [1m[32mresults-info/view.js[39m[22m 383 bytes [1m[32m[emitted][39m[22m [javascript module] [1m[32m[minimized][39m[22m (name: results-info/view)
+  asset [1m[32mresults-info/view.asset.php[39m[22m 130 bytes [1m[32m[emitted][39m[22m (name: results-info/view)
+Entrypoint [1mresults-info/view[39m[22m 513 bytes = [1m[32mresults-info/view.js[39m[22m 383 bytes [1m[32mresults-info/view.asset.php[39m[22m 130 bytes
+Entrypoint [1msearch-relevancy/view[39m[22m 868 bytes = [1m[32msearch-relevancy/view.js[39m[22m 738 bytes [1m[32msearch-relevancy/view.asset.php[39m[22m 130 bytes
+Entrypoint [1mtemplate/view[39m[22m 10.1 KiB = [1m[32mtemplate/view.js[39m[22m 9.94 KiB [1m[32mtemplate/view.asset.php[39m[22m 203 bytes
+orphan modules 19.3 KiB [1m[33m[orphan][39m[22m 31 modules
+built modules 31.5 KiB [1m[33m[built][39m[22m
+  [1m./src/results-info/view.js + 1 modules[39m[22m 902 bytes [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+  [1m./src/search-relevancy/view.js + 1 modules[39m[22m 1.42 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+  [1m./src/template/view.js + 7 modules[39m[22m 29.2 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+  [1mexternal "@wordpress/interactivity-router"[39m[22m 42 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 17417 ms
+Block metadata PHP file generated at: build/blocks-manifest.php
