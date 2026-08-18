@@ -88,6 +88,7 @@ class Plugin {
 		$this->loader = new Loader();
 
 		require_once plugin_dir_path( __DIR__ ) . '/includes/providers/class-elasticpress-middleware.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/class-admin-dataview-search.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-rest-api.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-block-migrations.php';
 
@@ -116,6 +117,7 @@ class Plugin {
 		$this->loader->add_filter( 'ep_set_sort', $this, 'ep_sort_by_date', 10, 2 );
 		$this->loader->add_filter( 'ep_highlight_should_add_clause', $this, 'ep_enable_highlighting', 10, 4 );
 
+		new Admin_Dataview_Search( $this->get_loader() );
 		new Rest_API( $this->get_loader() );
 		new ElasticPress_Middleware( $this->get_loader() );
 		new Block_Migrations( $this->get_loader() );
@@ -200,8 +202,9 @@ class Plugin {
 	public function sanitize_search_term( $query ) {
 		$is_frontend_search = ! is_admin() && $query->is_main_query() && $query->is_search();
 		$is_rest_search     = defined( 'REST_REQUEST' ) && REST_REQUEST && $query->is_search();
+		$is_dataview_search = (bool) $query->get( 'prc_wp_admin_dataview' ) && $query->is_search();
 
-		if ( ! $is_frontend_search && ! $is_rest_search ) {
+		if ( ! $is_frontend_search && ! $is_rest_search && ! $is_dataview_search ) {
 			return;
 		}
 
@@ -308,6 +311,11 @@ class Plugin {
 			return;
 		}
 
+		// Honor explicit opt-out (DataViews trash / watcher LIKE searches).
+		if ( false === $query->get( 'ep_integrate' ) ) {
+			return;
+		}
+
 		$is_rest = defined( 'REST_REQUEST' ) && REST_REQUEST;
 		$is_feed = $query->is_feed();
 
@@ -328,7 +336,7 @@ class Plugin {
 	/**
 	 * Force ElasticPress on REST /wp/v2/posts?search=… and harden the term.
 	 *
-	 * Does not hook rest_chart_query — chart search clears `s` and uses meta.
+	 * Does not hook rest_chart_query — chart DataViews search keeps `s` and indexes design_slug.
 	 *
 	 * @hook rest_post_query
 	 *

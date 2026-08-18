@@ -4,8 +4,9 @@ Canonical ElasticPress / VIP Search integration for PRC Platform: search hardeni
 
 ## What it does
 
-- Forces **ElasticPress** (`ep_integrate`) on search paths that would otherwise fall through to expensive MySQL `LIKE` scans
-- Sanitizes and truncates search terms early (100-character cap) on frontend search, REST search, and search feeds
+- Forces **ElasticPress** (`ep_integrate`) on search paths that would otherwise fall through to expensive MySQL `LIKE` scans, including admin DataViews list search
+- Indexes unpublished statuses `draft`, `pending`, `private`, and `future` for editorial search (`trash` stays on MySQL)
+- Sanitizes and truncates search terms early (100-character cap) on frontend search, REST search, DataViews list search, and search feeds
 - Caps search RSS feed `posts_per_page` at 20 (crawler hardening)
 - Owns faceted listing/search middleware (`ElasticPress_Middleware` + `ElasticPress_Facets_API`)
 - Registers facet UI blocks under the `prc-ep/*` namespace
@@ -50,7 +51,9 @@ Frontend HTML `/search*` integrates via facets middleware. Additional hooks cove
 | --- | --- | --- |
 | `pre_get_posts` → `integrate_search_queries` | REST search + search feeds | Sets `ep_integrate=true` when `REST_REQUEST` or `is_feed()` |
 | `rest_post_query` → `integrate_rest_post_search` | `/wp/v2/posts?search=…` | Sanitizes term + sets `ep_integrate=true` |
-| `pre_get_posts` → `sanitize_search_term` | Frontend + REST main search | Truncates `s` to 100 chars |
+| `prc_wp_admin_dataview` query flag | Admin DataViews lists | Shell/`Search_Query` sets `ep_integrate` (not trash-only); `Admin_Dataview_Search` expands search fields |
+| `ep_indexable_post_status` | Index | Adds `draft`, `pending`, `private`, `future`; never `trash` |
+| `pre_get_posts` → `sanitize_search_term` | Frontend + REST + DataViews | Truncates `s` to 100 chars |
 | `pre_get_posts` → `reject_nonsense_search_term` | Frontend main search | Flags spammy `s` (consecutive `++`, noise-only); short-circuits + 404 |
 | `ElasticPress_Middleware::MAX_NAVIGABLE_PAGE` | Facet aggregations | Skip facets past page **100** (pager still uses ES window) |
 
@@ -69,6 +72,7 @@ npx turbo build --filter=@prc/elasticpress
 | Path | Purpose |
 | --- | --- |
 | `includes/class-plugin.php` | Search integration, sanitization, robots, facet bootstrap |
+| `includes/class-admin-dataview-search.php` | Admin DataViews search fields, unpublished statuses, chart `design_slug` |
 | `includes/providers/` | Middleware + Facets API |
 | `vip-config/server-redirects.php` | Pre-WordPress search + legacy facet redirects |
 | `src/` | Facet blocks |
