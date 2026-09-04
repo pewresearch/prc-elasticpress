@@ -4,6 +4,6 @@
 
 Source directory "src" was not found. Please confirm there is a "src" directory in the root or the value passed with "--output-path" is correct.
 Source directory "src" was not found. Please confirm there is a "src" directory in the root or the value passed with "--output-path" is correct.
-webpack 5.106.2 compiled successfully in 177 ms
+webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 230 ms
 
-webpack 5.106.2 compiled successfully in 49 ms
+webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 80 ms
