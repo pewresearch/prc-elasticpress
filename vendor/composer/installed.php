@@ -3,7 +3,7 @@
         'name' => 'pewresearch/prc-elasticpress',
         'pretty_version' => 'dev-trunk',
         'version' => 'dev-trunk',
-        'reference' => '804ddde449658d8cb94e2325ff2a2de1d02e8bbf',
+        'reference' => '330ad074e1b2c9350f92f9ca240be6458a5d9132',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'pewresearch/prc-elasticpress' => array(
             'pretty_version' => 'dev-trunk',
             'version' => 'dev-trunk',
-            'reference' => '804ddde449658d8cb94e2325ff2a2de1d02e8bbf',
+            'reference' => '330ad074e1b2c9350f92f9ca240be6458a5d9132',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
