@@ -1,5 +1,5 @@
 
-> @prc/elasticpress@2.0.2 build
+> @prc/elasticpress@2.0.1 build
 > wp-scripts build --experimental-modules --webpack-copy-php && wp-scripts build-blocks-manifest
 
 Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
@@ -36,7 +36,7 @@ built modules 2.46 KiB (css/mini-extract) 28.5 KiB (javascript) [1m[33m[built]
     [1m./src/results-info/index.js + 7 modules[39m[22m 3.72 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
     [1m./src/search-relevancy/index.js + 7 modules[39m[22m 4.54 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
     [1m./src/template/index.js + 18 modules[39m[22m 14.2 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 1758 ms
+webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 6907 ms
 
 assets by path [1m[32mtemplate/[39m[22m 10.3 KiB
   asset [1m[32mtemplate/view.js[39m[22m 10.1 KiB [1m[32m[emitted][39m[22m [javascript module] [1m[32m[minimized][39m[22m (name: template/view)
@@ -56,5 +56,5 @@ built modules 32.2 KiB [1m[33m[built][39m[22m
   [1m./src/search-relevancy/view.js + 1 modules[39m[22m 1.42 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
   [1m./src/template/view.js + 7 modules[39m[22m 29.9 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
   [1mexternal "@wordpress/interactivity-router"[39m[22m 42 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 1533 ms
+webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 6023 ms
 Block metadata PHP file generated at: build/blocks-manifest.php
