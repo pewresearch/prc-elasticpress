@@ -192,8 +192,8 @@ class Context_Provider {
 		while ( $tag->next_tag() ) {
 			if ( $tag->has_class( 'wp-block-query' ) ) {
 				$tag->set_attribute( 'data-wp-class--is-processing', 'prc-ep/facets-context-provider::state.isProcessing' );
-				$tag->set_attribute( 'data-wp-watch--on-selection', 'prc-ep/facets-context-provider::callbacks.onSelection' );
-				$tag->set_attribute( 'data-wp-watch--on-ep-sort-by-update', 'prc-ep/facets-context-provider::callbacks.onEpSortByUpdate' );
+				$tag->set_attribute( 'data-wp-watch---on-selection', 'prc-ep/facets-context-provider::callbacks.onSelection' );
+				$tag->set_attribute( 'data-wp-watch---on-ep-sort-by-update', 'prc-ep/facets-context-provider::callbacks.onEpSortByUpdate' );
 			}
 			if ( $tag->has_class( 'wp-block-prc-block-tokens-list' ) ) {
 				$tag->set_attribute( 'data-wp-class--is-processing', 'prc-ep/facets-context-provider::state.isProcessing' );

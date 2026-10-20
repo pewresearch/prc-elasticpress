@@ -208,7 +208,7 @@ class Template {
 					)
 				),
 				'data-wp-init'                        => 'callbacks.onTemplateInit',
-				'data-wp-watch--on-expand'            => 'callbacks.onExpand',
+				'data-wp-watch---on-expand'           => 'callbacks.onExpand',
 				'data-wp-class--is-processing'        => 'state.isProcessing',
 				'data-wp-class--has-choices'          => 'state.hasChoices',
 				'data-wp-class--has-expanded-choices' => 'state.hasExpandedChoices',

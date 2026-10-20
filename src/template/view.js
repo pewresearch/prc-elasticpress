@@ -17,7 +17,7 @@ import {
 	withSyncEvent,
 	getElement,
 } from '@wordpress/interactivity';
-import { addQueryArgs } from '@wordpress/url';
+import { addQueryArgs, getQueryArgs } from '@wordpress/url';
 
 /**
  * Format facet count for display.
@@ -41,6 +41,24 @@ function formatCount(count) {
 function getPropertyFromObjects(property, searchValue, values) {
 	const choice = values.find((c) => c.value === searchValue);
 	return choice ? choice[property] : null;
+}
+
+/**
+ * Check whether two URLs carry the same facet (ep_*) query args.
+ * Other query args (utm_*, gclid, etc.) and /page/N/ do not change facet results.
+ *
+ * @param {string} a - First URL
+ * @param {string} b - Second URL
+ * @return {boolean} True if the facet query args match
+ */
+function hasSameFacetQueryArgs(a, b) {
+	const facetArgs = (url) =>
+		JSON.stringify(
+			Object.entries(getQueryArgs(url))
+				.filter(([key]) => key.startsWith('ep_'))
+				.sort(([x], [y]) => x.localeCompare(y))
+		);
+	return facetArgs(a) === facetArgs(b);
 }
 
 /**
@@ -417,8 +435,10 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 
 			debugLog('Updating results', { currentUrl, newUrl });
 
-			if (newUrl === currentUrl) {
-				debugLog('No URL change, skipping update');
+			// The watch callbacks run once on page load; navigating then would
+			// strip non-facet params, drop /page/N/, and scroll to the results.
+			if (!newUrl || hasSameFacetQueryArgs(newUrl, currentUrl)) {
+				debugLog('No facet change, skipping update');
 				return;
 			}
 
