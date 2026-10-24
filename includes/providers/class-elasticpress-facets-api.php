@@ -206,14 +206,8 @@ class ElasticPress_Facets_API {
 			$matched_terms     = $facets_data;
 			$matched_term_keys = array_keys( $matched_terms );
 			// Get all the terms for this taxonomy.
-			$taxonomy_terms = get_terms(
-				array(
-					'taxonomy'   => $facet_slug,
-					'hide_empty' => false,
-					'fields'     => 'slugs',
-				)
-			);
-			if ( is_wp_error( $taxonomy_terms ) || ! is_array( $taxonomy_terms ) ) {
+			$taxonomy_terms = Facet_Term_Index::get_slugs( $facet_slug );
+			if ( null === $taxonomy_terms ) {
 				continue;
 			}
 			$new_terms = array();
@@ -253,22 +247,22 @@ class ElasticPress_Facets_API {
 			'facetSlug'       => $taxonomy,
 		);
 		foreach ( $terms as $slug => $count ) {
-			$term_obj = get_term_by( 'slug', $slug, $taxonomy );
-			if ( ! $term_obj || is_wp_error( $term_obj ) ) {
+			$term = Facet_Term_Index::find( $taxonomy, $slug );
+			if ( null === $term ) {
 				continue;
 			}
 			// Only allow top level terms.
-			if ( 0 !== (int) $term_obj->parent ) {
+			if ( 0 !== $term['parent'] ) {
 				continue;
 			}
 			$selected                    = $taxonomy_facet['selected'];
 			$choice_disabled             = $disabled || 0 === (int) $count;
 			$taxonomy_facet['choices'][] = array(
 				'count'      => $count,
-				'label'      => format_label( $term_obj->name ),
+				'label'      => format_label( $term['name'] ),
 				'slug'       => $slug,
 				'facetSlug'  => $taxonomy,
-				'term_id'    => $term_obj->term_id,
+				'term_id'    => $term['term_id'],
 				'value'      => $slug,
 				'isSelected' => in_array( $slug, $selected, true ),
 				'isRequired' => false,
@@ -479,7 +473,7 @@ class ElasticPress_Facets_API {
 	/**
 	 * Get the pagination.
 	 *
-	 * total_rows stays the true ES/public found_posts count (may exceed the
+	 * The total_rows value stays the true ES/public found_posts count (may exceed the
 	 * navigable window). total_pages is the capped pager length so UI links
 	 * never request offsets past VIP's ES max result window.
 	 *

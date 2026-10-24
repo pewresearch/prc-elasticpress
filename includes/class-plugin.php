@@ -87,6 +87,7 @@ class Plugin {
 		// Initialize the loader.
 		$this->loader = new Loader();
 
+		require_once plugin_dir_path( __DIR__ ) . '/includes/providers/class-facet-term-index.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/providers/class-elasticpress-middleware.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-admin-dataview-search.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-rest-api.php';
@@ -120,6 +121,7 @@ class Plugin {
 		new Admin_Dataview_Search( $this->get_loader() );
 		new Rest_API( $this->get_loader() );
 		new ElasticPress_Middleware( $this->get_loader() );
+		new Facet_Term_Index( $this->get_loader() );
 		new Block_Migrations( $this->get_loader() );
 
 		\wp_register_block_metadata_collection(
