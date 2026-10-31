@@ -19,7 +19,7 @@
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       prc-elasticpress
- * Requires Plugins:  prc-scripts, prc-publication-listing
+ * Requires Plugins:  prc-shared, prc-publication-listing
  */
 
 namespace PRC\Platform\ElasticPress;

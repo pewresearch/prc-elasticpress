@@ -80,5 +80,5 @@ npx turbo build --filter=@prc/elasticpress
 
 ## Related
 
-- Requires `prc-scripts` and `prc-publication-listing` (`isPubListingQuery` handshake)
+- Requires `prc-shared` and `prc-publication-listing` (`isPubListingQuery` handshake)
 - Theme templates in `@prc/design-system` embed `prc-ep/*` facet blocks
