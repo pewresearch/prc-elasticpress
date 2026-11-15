@@ -17,96 +17,28 @@ import {
 	withSyncEvent,
 	getElement,
 } from '@wordpress/interactivity';
-import { addQueryArgs, getQueryArgs } from '@wordpress/url';
+import { addQueryArgs } from '@wordpress/url';
 
 /**
- * Format facet count for display.
- * Shows "250+" for counts >= 250 to indicate many results.
- *
- * @param {number} count - The count to format
- * @return {string|number} Formatted count
+ * Internal Dependencies
  */
-function formatCount(count) {
-	return 250 <= count ? '250+' : count;
-}
-
-/**
- * Get a property value from an array of objects by searching for a specific value.
- *
- * @param {string} property    - The property to retrieve
- * @param {*}      searchValue - The value to search for
- * @param {Array}  values      - Array of objects to search
- * @return {*} The property value or null if not found
- */
-function getPropertyFromObjects(property, searchValue, values) {
-	const choice = values.find((c) => c.value === searchValue);
-	return choice ? choice[property] : null;
-}
-
-/**
- * Check whether two URLs carry the same facet (ep_*) query args.
- * Other query args (utm_*, gclid, etc.) and /page/N/ do not change facet results.
- *
- * @param {string} a - First URL
- * @param {string} b - Second URL
- * @return {boolean} True if the facet query args match
- */
-function hasSameFacetQueryArgs(a, b) {
-	const facetArgs = (url) =>
-		JSON.stringify(
-			Object.entries(getQueryArgs(url))
-				.filter(([key]) => key.startsWith('ep_'))
-				.sort(([x], [y]) => x.localeCompare(y))
-		);
-	return facetArgs(a) === facetArgs(b);
-}
-
-/**
- * Check if debug mode is enabled.
- * Enable by setting window.prcFacetsDebug = true in browser console.
- *
- * @return {boolean} True if debug mode is enabled
- */
-function isDebugMode() {
-	return window.prcFacetsDebug === true;
-}
-
-/**
- * Log debug information to console.
- * Only logs if debug mode is enabled.
- *
- * @param {string} message - The message to log
- * @param {*}      data    - Optional data to log
- */
-function debugLog(message, data = null) {
-	if (!isDebugMode()) {
-		return;
-	}
-
-	const timestamp = new Date().toISOString();
-	const prefix = '[PRC Facets]';
-
-	if (data !== null) {
-		console.log(`${prefix} [${timestamp}] ${message}`, data);
-	} else {
-		console.log(`${prefix} [${timestamp}] ${message}`);
-	}
-}
-
-/**
- * Log performance metrics.
- *
- * @param {string} operation - The operation being measured
- * @param {number} startTime - Start time from performance.now()
- */
-function debugPerformance(operation, startTime) {
-	if (!isDebugMode()) {
-		return;
-	}
-
-	const duration = performance.now() - startTime;
-	debugLog(`Performance: ${operation}`, `${duration.toFixed(2)}ms`);
-}
+import {
+	announceDebugMode,
+	collapseAfterDelay,
+	debugLog,
+	debugPerformance,
+	filterChoicesBySearch,
+	formatCount,
+	getPropertyFromObjects,
+	hasSameFacetQueryArgs,
+	highlightListboxChoice,
+	leaveTeamDatasetsPath,
+	nextActiveIndex,
+	slugToLabel,
+	sortChoicesBySelection,
+	sortDropdownChoices,
+	toggleSelection,
+} from './facet-helpers';
 
 const { state, actions } = store('prc-ep/facets-context-provider', {
 	state: {
@@ -139,7 +71,6 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 			return actions.constructNewUrl(selected);
 		},
 		get choices() {
-			const startTime = performance.now();
 			const context = getContext();
 			const { facetSlug, limit, facetType } = context;
 
@@ -157,34 +88,14 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 				return [];
 			}
 			if ('dropdown' === facetType) {
-				return [...state.facets[facetSlug].choices].sort((a, b) => {
-					// Check if both values are numbers
-					const aNum = Number(a.label);
-					const bNum = Number(b.label);
-					if (!isNaN(aNum) && !isNaN(bNum)) {
-						return bNum - aNum; // Reversed the order
-					}
-					// Otherwise sort alphabetically in reverse
-					return b.label.localeCompare(a.label); // Reversed the order
-				});
+				return sortDropdownChoices(state.facets[facetSlug].choices);
 			}
-			const choices = state.facets[facetSlug].choices;
-			// Sort choices to put selected ones first and then by count
-			const sortedChoices = [...choices].sort((a, b) => {
-				const aSelected = state.facets[facetSlug].selected.includes(
-					a.value
-				);
-				const bSelected = state.facets[facetSlug].selected.includes(
-					b.value
-				);
-				// First sort by selection status
-				if (aSelected !== bSelected) {
-					return bSelected - aSelected; // Selected items come first
-				}
-				// Then sort by count
-				return b.count - a.count;
-			});
-			const result = sortedChoices.slice(0, limit);
+			const startTime = performance.now();
+			// Selected choices first, then by count.
+			const result = sortChoicesBySelection(
+				state.facets[facetSlug].choices,
+				state.facets[facetSlug].selected
+			).slice(0, limit);
 
 			debugPerformance('choices computation', startTime);
 			debugLog('Returning choices', { count: result.length });
@@ -294,8 +205,8 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 		get inputId() {
 			const context = getContext();
 			const { choice } = context;
-			const { slug, term_id } = choice;
-			return `facet_${slug}_${term_id}`;
+			const { slug, term_id: termId } = choice;
+			return `facet_${slug}_${termId}`;
 		},
 		get inputValue() {
 			const context = getContext();
@@ -310,12 +221,7 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 				'dropdown' === facetType &&
 				state.facets[facetSlug].selected.length > 0
 			) {
-				// Get the first value out of selected as a string
-				const firstValue =
-					state.facets[facetSlug].selected[0].toString();
-				_placeholder = firstValue
-					.replace(/-/g, ' ')
-					.replace(/\b\w/g, (l) => l.toUpperCase());
+				_placeholder = slugToLabel(state.facets[facetSlug].selected[0]);
 			}
 			return _placeholder;
 		},
@@ -335,27 +241,13 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 		},
 		get inputOptions() {
 			const context = getContext();
-			const { facetSlug, facetType, searchTerm } = context;
+			const { facetSlug, searchTerm } = context;
 			const { choices } = getServerState().facets[facetSlug];
-			let newChoices = choices;
 
-			// Filter choices based on search term.
-			if (searchTerm && searchTerm.length > 0 && choices) {
-				const filteredChoices = choices.filter((choice) =>
-					choice.label
-						.toLowerCase()
-						.includes(searchTerm.toLowerCase())
-				);
-				if (filteredChoices.length > 0) {
-					newChoices = filteredChoices;
-				} else {
-					newChoices = choices;
-				}
-			}
 			// Return the choices as an array of objects with the following properties:
 			// - value: The value of the choice.
 			// - label: The label of the choice.
-			return newChoices.map((choice) => {
+			return filterChoicesBySearch(choices, searchTerm).map((choice) => {
 				return {
 					value: choice.value,
 					label: `${choice.label} (${formatCount(choice.count)})`,
@@ -380,8 +272,8 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 	actions: {
 		/**
 		 * Construct the new url to route to by adding the selected facets to the query args.
-		 * @param {boolean|object} selected
-		 * @return
+		 * @param {boolean|Object} selected Selected facets, or false for none.
+		 * @return {string|undefined} The new URL, or undefined when nothing is selected.
 		 */
 		constructNewUrl(selected = false) {
 			debugLog('Constructing new URL', { selected });
@@ -395,11 +287,14 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 				// If the key already has ep_ prefixed (filters or sort) then add it directly
 				if (key.startsWith('ep_')) {
 					tmp[key] = selected[key];
-				} else if (Array.isArray(selected[key])) {
-					tmp[`${state.urlKey}${key}`] = selected[key].join(',');
-				} else {
-					tmp[`${state.urlKey}${key}`] = selected[key];
+					return;
 				}
+				// Each facet names its own URL param; taxonomies share the default prefix.
+				const param =
+					state.facets?.[key]?.urlParam || `${state.urlKey}${key}`;
+				tmp[param] = Array.isArray(selected[key])
+					? selected[key].join(',')
+					: selected[key];
 			});
 			// Double check tmp, if it has a key with empty value, remove it.
 			Object.keys(tmp).forEach((key) => {
@@ -429,7 +324,6 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 		 * Scroll's the user to the top of the page, gracefully.
 		 */
 		*updateResults() {
-			const startTime = performance.now();
 			const currentUrl = window.location.href;
 			const newUrl = state.getUpdatedUrl;
 
@@ -449,6 +343,7 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 			// 	newUrl
 			// );
 
+			const startTime = performance.now();
 			state.isProcessing = true;
 
 			// Process the new url. This will hit the server and return the new state.
@@ -493,8 +388,7 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 		/**
 		 * Check if the newUrl is already in the prefetched array, if not add
 		 * it and then prefetch the newUrl.
-		 * @param {string} newUrl
-		 * @return
+		 * @param {string} newUrl The URL to prefetch.
 		 */
 		*prefetch(newUrl) {
 			const router = yield import('@wordpress/interactivity-router');
@@ -506,26 +400,14 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 		},
 		/**
 		 * Clear a facet or a facet value from the selected state.
-		 * @param {string}     facetSlug
-		 * @param {string|int} facetValue
-		 * @return
+		 * @param {string}        facetSlug  The facet to clear.
+		 * @param {string|number} facetValue A single value to clear, or null for the whole facet.
+		 * @return {Object|undefined} The remaining selection when a whole facet was cleared.
 		 */
 		onClear: (facetSlug, facetValue = null) => {
 			debugLog('Clearing facet', { facetSlug, facetValue });
 
-			// Clearing research-teams on a /{team}/datasets path navigates to
-			// the unscoped datasets archive so path-scoped preload stays consistent.
-			if (
-				facetSlug === 'research-teams' &&
-				!facetValue &&
-				typeof window !== 'undefined' &&
-				/\/[^/]+\/datasets\/?$/.test(window.location.pathname)
-			) {
-				const nextPath = window.location.pathname.replace(
-					/\/[^/]+\/datasets\/?$/,
-					'/datasets/'
-				);
-				window.location.assign(nextPath);
+			if (leaveTeamDatasetsPath(facetSlug, facetValue)) {
 				return;
 			}
 
@@ -571,40 +453,29 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 		},
 		*onInputMouseEnter() {
 			const context = getContext();
-			const { facetSlug, value, selected } = context;
+			const { value, selected } = context;
 			const currentSelected = selected || [];
 			const nextSelected = { ...currentSelected, [value]: value };
 			const nextUrl = actions.constructNewUrl(nextSelected);
 			// Prefetch the possible next url.
 			yield actions.prefetch(nextUrl);
 		},
-		onInputMouseLeave: withSyncEvent((event) => {
-			// console.log('onInputMouseLeave', event);
+		onInputMouseLeave: withSyncEvent(() => {
+			// Intentionally empty: no hover-out behavior yet.
 		}),
-		onInputFocus: withSyncEvent((event) => {
+		onInputFocus: withSyncEvent(() => {
 			const context = getContext();
 			const { facetType } = context;
 			if ('dropdown' === facetType) {
 				context.expanded = !context.expanded;
 			}
 		}),
-		onInputBlur: withSyncEvent((event) => {
-			// By default this runs on the on-blur directive on the input element
-			// but we also use it as a shortcut to close the listbox on click,
-
-			// Because the on-blur event fires before the click event
-			// we need to slow things down a bit, 150 ms should do it...
-			let isRunning = false;
-			if (!isRunning) {
-				isRunning = true;
-				const context = getContext();
-				const { facetType } = context;
-				if ('dropdown' === facetType) {
-					setTimeout(() => {
-						context.expanded = false;
-						isRunning = false;
-					}, 150);
-				}
+		onInputBlur: withSyncEvent(() => {
+			// Runs on the on-blur directive, and doubles as a shortcut to close
+			// the listbox on click.
+			const context = getContext();
+			if ('dropdown' === context.facetType) {
+				collapseAfterDelay(context);
 			}
 		}),
 		onInputKeyDown: withSyncEvent((event) => {
@@ -620,9 +491,7 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 
 				selected[facetSlug] = [value];
 
-				setTimeout(() => {
-					context.expanded = false;
-				}, 150);
+				collapseAfterDelay(context);
 			}
 		}),
 		onInputKeyUp: withSyncEvent((event) => {
@@ -651,7 +520,7 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 				context.expanded = false;
 			}
 		}),
-		onDropdownArrowClick: withSyncEvent((event) => {
+		onDropdownArrowClick: withSyncEvent(() => {
 			const context = getContext();
 			const { facetType } = context;
 			if ('dropdown' === facetType) {
@@ -662,51 +531,25 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 			const { inputOptions } = state;
 			const { activeIndex } = getContext();
 
-			// Determine next active index.
-			let nextActive = null;
-			if (activeIndex === null || isNaN(activeIndex)) {
-				nextActive = 0;
-			} else {
-				nextActive = activeIndex + direction;
-			}
-			if (nextActive < 0) {
-				nextActive = inputOptions.length - 1;
-			}
-			if (nextActive >= inputOptions.length) {
-				nextActive = 0;
-			}
+			const nextActive = nextActiveIndex(
+				activeIndex,
+				direction,
+				inputOptions.length
+			);
 
-			// Get the next active value.
-			const nextActiveValue = inputOptions[nextActive].value;
-			// And then scroll the listbox to the active item.
-			const listbox = ref.parentElement.parentElement.querySelector(
-				'.wp-block-prc-block-form-input-select__list'
-			);
-			const activeItem = listbox.querySelector(
-				`[data-ref-value="${nextActiveValue}"]`
-			);
-			if (activeItem) {
-				// Remove the active class from the previous active item.
-				const previousActive = listbox.querySelector('.is-selected');
-				if (previousActive) {
-					previousActive.classList.remove('is-selected');
-				}
-				activeItem.classList.add('is-selected');
-				activeItem.scrollIntoView({
-					block: 'nearest',
-				});
-			}
+			// Highlight the next active value and scroll the listbox to it.
+			highlightListboxChoice(ref, inputOptions[nextActive].value);
 
 			getContext().activeIndex = nextActive;
 		},
-		onInputOptionClick: withSyncEvent((event) => {
+		onInputOptionClick: withSyncEvent(() => {
 			const context = getContext();
 			const { facetSlug, choice } = context;
 			const { selected } = state;
 			const { value } = choice;
 			selected[facetSlug] = [value];
 		}),
-		onInputCheckboxClick: withSyncEvent((event) => {
+		onInputCheckboxClick: withSyncEvent(() => {
 			const context = getContext();
 			const { choice, facetSlug } = context;
 			const { selected } = state;
@@ -718,25 +561,16 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 				debugLog('Input disabled, ignoring click');
 				return;
 			}
-			if (!selected[facetSlug] || selected[facetSlug].length === 0) {
-				selected[facetSlug] = [value];
-				debugLog('Added first selection', { facetSlug, value });
-			} else if (selected[facetSlug].includes(value)) {
-				selected[facetSlug] = selected[facetSlug].filter(
-					(item) => item !== value
-				);
-				debugLog('Removed selection', { facetSlug, value });
-			} else if ('radio' === type) {
-				selected[facetSlug] = [value];
-				debugLog('Radio selection replaced', { facetSlug, value });
-			} else {
-				selected[facetSlug] = [...selected[facetSlug], value];
-				debugLog('Added to selection', {
-					facetSlug,
-					value,
-					total: selected[facetSlug].length,
-				});
-			}
+			selected[facetSlug] = toggleSelection(
+				selected[facetSlug],
+				value,
+				type
+			);
+			debugLog('Facet selection updated', {
+				facetSlug,
+				value,
+				total: selected[facetSlug].length,
+			});
 		}),
 		/**
 		 * When clicking on the facet expanded button, toggle the expanded state.
@@ -746,19 +580,9 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 			context.expanded = !context.expanded;
 		},
 		onCollapse: () => {
-			// By default this runs on the on-blur directive on the input element
-			// but we also use it as a shortcut to close the listbox on click,
-			// Because the on-blur event fires before the click event
-			// we need to slow things down a bit, 150 ms should do it...
-			const context = getContext();
-			let isRunning = false;
-			if (!isRunning) {
-				isRunning = true;
-				setTimeout(() => {
-					context.expanded = false;
-					isRunning = false;
-				}, 150);
-			}
+			// Runs on the on-blur directive, and doubles as a shortcut to close
+			// the listbox on click.
+			collapseAfterDelay(getContext());
 		},
 	},
 	callbacks: {
@@ -828,24 +652,4 @@ const { state, actions } = store('prc-ep/facets-context-provider', {
 });
 
 // Initialize debug logging
-if (isDebugMode()) {
-	debugLog('PRC Facets Debug Mode Enabled', {
-		version: '2.5.0',
-		instructions: 'Set window.prcFacetsDebug = false to disable',
-		availableLogs: [
-			'Facet state changes',
-			'URL construction',
-			'Results updates',
-			'Performance metrics',
-			'Facet selections',
-			'Cache operations',
-		],
-	});
-
-	// Log initial state
-	debugLog('Initial facets state', {
-		facets: Object.keys(state.facets || {}),
-		selected: state.selected || {},
-		isProcessing: state.isProcessing,
-	});
-}
+announceDebugMode(state);

@@ -7,7 +7,7 @@
  *
  * Handles:
  * - Legacy ?s= search → /search/{term}
- * - Legacy FacetWP underscore query params → ep_filter_*
+ * - Legacy FacetWP underscore query params → ep_filter_* (taxonomies) and ep_date_* (years, time since)
  *
  * @package PRC\Platform\ElasticPress
  */
@@ -32,7 +32,7 @@ if ( ! function_exists( 'prc_elasticpress_redirect_legacy_search' ) ) {
 	/**
 	 * Canonicalize legacy ?s= search queries to /search/{term} permalinks.
 	 *
-	 * Preserves ElasticPress facet query args (ep_filter_*).
+	 * Preserves ElasticPress facet query args (ep_filter_*, ep_date_*).
 	 *
 	 * @param string $http_host    Request host.
 	 * @param string $request_uri  Full request URI (path + query).
@@ -55,11 +55,12 @@ if ( ! function_exists( 'prc_elasticpress_redirect_legacy_search' ) ) {
 
 		$search_term = $matches[1];
 		// Canonicalize to site-root /search/{term} (not nested under the current path).
-		// Preserve any ep_filter_* query params using native PHP (avoid WP helpers here).
+		// Preserve any ep_filter_* / ep_date_* query params using native PHP (avoid WP helpers here).
 		$target    = '/search/' . $search_term;
 		$ep_params = array();
 		foreach ( $_GET as $param_key => $param_value ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			if ( 0 === strpos( (string) $param_key, 'ep_filter_' ) && '' !== $param_value ) {
+			$is_facet_param = 0 === strpos( (string) $param_key, 'ep_filter_' ) || 0 === strpos( (string) $param_key, 'ep_date_' );
+			if ( $is_facet_param && '' !== $param_value ) {
 				$ep_params[ $param_key ] = $param_value;
 			}
 		}
@@ -75,7 +76,7 @@ if ( ! function_exists( 'prc_elasticpress_redirect_legacy_search' ) ) {
 
 if ( ! function_exists( 'prc_elasticpress_redirect_legacy_facet_params' ) ) {
 	/**
-	 * 301 legacy FacetWP facet query params to ep_filter_* equivalents.
+	 * 301 legacy FacetWP facet query params, and the ep_filter_ date params shipped in 1.12, to their current names.
 	 *
 	 * @param string $http_host    Request host.
 	 * @param string $request_uri  Full request URI (path + query).
@@ -91,13 +92,15 @@ if ( ! function_exists( 'prc_elasticpress_redirect_legacy_facet_params' ) ) {
 		}
 
 		$map = array(
-			'_categories'        => 'ep_filter_category',
-			'_authors'           => 'ep_filter_bylines',
-			'_research_teams'    => 'ep_filter_research-teams',
-			'_regions_countries' => 'ep_filter_regions-countries',
-			'_formats'           => 'ep_filter_formats',
-			'_years'             => 'ep_filter_years',
-			'_time_since'        => 'ep_filter_time_since',
+			'_categories'          => 'ep_filter_category',
+			'_authors'             => 'ep_filter_bylines',
+			'_research_teams'      => 'ep_filter_research-teams',
+			'_regions_countries'   => 'ep_filter_regions-countries',
+			'_formats'             => 'ep_filter_formats',
+			'_years'               => 'ep_date_years',
+			'_time_since'          => 'ep_date_time_since',
+			'ep_filter_years'      => 'ep_date_years',
+			'ep_filter_time_since' => 'ep_date_time_since',
 		);
 
 		$strip_keys = array(

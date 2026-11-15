@@ -26,20 +26,6 @@ class ElasticPress_Middleware {
 	protected $ep_facets;
 
 	/**
-	 * time_since URL slug → relative date string for ES range filters.
-	 *
-	 * Slugs match FacetWP safe_value(label) for bookmark/redirect continuity.
-	 *
-	 * @var array<string, string>
-	 */
-	const TIME_SINCE_RANGES = array(
-		'past-month'     => '-30 days',
-		'past-6-months'  => '-180 days',
-		'past-12-months' => '-365 days',
-		'past-2-years'   => '-730 days',
-	);
-
-	/**
 	 * VIP Enterprise Search / Elasticsearch max result window (from + size).
 	 *
 	 * Requests past this window fall back to MySQL. Cap navigable pages here;
@@ -97,6 +83,7 @@ class ElasticPress_Middleware {
 
 		// ElasticPress.
 		if ( class_exists( '\ElasticPress\Feature\Facets\Facets' ) ) {
+			require_once plugin_dir_path( __FILE__ ) . 'class-date-facet-type.php';
 			$this->ep_facets = new \ElasticPress\Feature\Facets\Facets();
 			$loader->add_action( 'pre_get_posts', $this, 'take_over_pub_listing_queries', 5, 1 );
 			// After isPubListingQuery + pub-listing args (priorities 1 / 11).
@@ -105,10 +92,11 @@ class ElasticPress_Middleware {
 			$loader->add_filter( 'the_posts', $this, 'cap_pub_listing_max_num_pages', 10, 2 );
 			$loader->add_action( 'template_redirect', $this, 'not_found_pub_listing_pages_past_ep_window', 0 );
 			$loader->add_filter( 'ep_is_facetable', $this, 'ensure_pub_listing_facetable', 10, 2 );
+			$loader->add_filter( 'ep_facet_types', $this, 'register_date_facet_type' );
 			$loader->add_filter( 'ep_facet_include_taxonomies', $this, 'register_facets' );
 			$loader->add_filter( 'ep_post_formatted_args', $this, 'add_filters_to_query', 10, 3 );
-			$loader->add_filter( 'ep_formatted_args', $this, 'add_date_aggregations', 10, 3 );
-			$loader->add_filter( 'ep_formatted_args', $this, 'make_taxonomy_aggregations_disjunctive', 20, 3 );
+			// After EP's set_agg_filters (10) and _post_visibility enforcement (20) have settled post_filter.
+			$loader->add_filter( 'ep_post_formatted_args', $this, 'finalize_facet_aggregations', 30, 3 );
 			$loader->add_filter( 'ep_valid_response', $this, 'include_date_aggregation_in_response', 19, 4 );
 			$loader->add_filter( 'ep_valid_response', $this, 'remap_disjunctive_taxonomy_aggs', 20, 4 );
 			$loader->add_filter( 'ep_facet_taxonomies_size', $this, 'set_facet_taxonomies_size', 10, 2 );
@@ -326,20 +314,6 @@ class ElasticPress_Middleware {
 	}
 
 	/**
-	 * Fixed time_since choices for UI + aggregations.
-	 *
-	 * @return array<string, string> slug => label
-	 */
-	public static function get_time_since_choices() {
-		return array(
-			'past-month'     => 'Past Month',
-			'past-6-months'  => 'Past 6 Months',
-			'past-12-months' => 'Past 12 Months',
-			'past-2-years'   => 'Past 2 Years',
-		);
-	}
-
-	/**
 	 * Add taxonomy aggregations to ElasticPress.
 	 *
 	 * @hook ep_facet_include_taxonomies
@@ -416,6 +390,18 @@ class ElasticPress_Middleware {
 	}
 
 	/**
+	 * Register the date facet type so it owns the ep_date_ URL prefix.
+	 *
+	 * @hook ep_facet_types
+	 * @param array $types Facet type slug => class name.
+	 * @return array
+	 */
+	public function register_date_facet_type( $types ) {
+		$types['prc-date'] = Date_Facet_Type::class;
+		return $types;
+	}
+
+	/**
 	 * Register the query vars.
 	 *
 	 * @hook query_vars
@@ -424,8 +410,6 @@ class ElasticPress_Middleware {
 	 */
 	public function register_query_vars( $qvars ) {
 		$qvars[] = 'ep_sort__by_date';
-		$qvars[] = 'ep_filter_years';
-		$qvars[] = 'ep_filter_time_since';
 		return $qvars;
 	}
 
@@ -710,7 +694,7 @@ class ElasticPress_Middleware {
 	}
 
 	/**
-	 * Append custom (non-taxonomy) facet filters and restructure taxonomy OR/AND groups.
+	 * Append date facet filters and restructure taxonomy OR/AND groups.
 	 *
 	 * @hook ep_post_formatted_args
 	 *
@@ -720,138 +704,53 @@ class ElasticPress_Middleware {
 	 * @return array $args The args.
 	 */
 	public function add_filters_to_query( $args, $query_args, $wp_query ) {
-		unset( $query_args, $wp_query );
-
-		$years_filter      = get_query_var( 'ep_filter_years' );
-		$time_since_filter = get_query_var( 'ep_filter_time_since' );
-		// Query vars / $_GET may be arrays (e.g. ?ep_filter_years[]=2024); only accept strings.
-		if ( ! is_string( $years_filter ) ) {
-			$years_filter = '';
-		}
-		if ( ! is_string( $time_since_filter ) ) {
-			$time_since_filter = '';
-		}
-		if ( empty( $time_since_filter ) && isset( $_GET['ep_filter_time_since'] ) && is_string( $_GET['ep_filter_time_since'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$time_since_filter = sanitize_text_field( wp_unslash( $_GET['ep_filter_time_since'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		}
-		if ( empty( $years_filter ) && isset( $_GET['ep_filter_years'] ) && is_string( $_GET['ep_filter_years'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$years_filter = sanitize_text_field( wp_unslash( $_GET['ep_filter_years'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		}
+		unset( $query_args );
 
 		// OR within each taxonomy field; AND across taxonomies (FacetWP checkbox parity).
 		if ( ! empty( $args['post_filter'] ) && is_array( $args['post_filter'] ) ) {
 			$args['post_filter'] = $this->rebuild_post_filter_or_within_and_across( $args['post_filter'] );
 		}
 
-		// Append years / time_since so they work without taxonomy facets selected.
-		if ( ! empty( $years_filter ) ) {
-			$args   = $this->ensure_post_filter_must( $args );
-			$years  = array_filter( array_map( 'trim', explode( ',', (string) $years_filter ) ) );
-			$should = array();
-			foreach ( $years as $year ) {
-				$should[] = array(
-					'term' => array(
-						'date_terms.year' => (int) $year,
-					),
-				);
-			}
-			if ( ! empty( $should ) ) {
-				$args['post_filter']['bool']['must'][] = array(
-					'bool' => array(
-						'should'               => $should,
-						'minimum_should_match' => 1,
-					),
-				);
-			}
+		// Date facets are ANDed after the taxonomy rebuild so they work without taxonomy facets selected.
+		$facets = \ElasticPress\Features::factory()->get_registered_feature( 'facets' );
+		if ( ! $facets->is_facetable( $wp_query ) ) {
+			return $args;
 		}
 
-		if ( ! empty( $time_since_filter ) ) {
-			$slug = sanitize_title( (string) $time_since_filter );
-			if ( isset( self::TIME_SINCE_RANGES[ $slug ] ) ) {
-				$from = gmdate( 'Y-m-d H:i:s', strtotime( self::TIME_SINCE_RANGES[ $slug ] ) );
-				$args = $this->ensure_post_filter_must( $args );
-				$args['post_filter']['bool']['must'][] = array(
-					'range' => array(
-						'post_date' => array(
-							'gte' => $from,
-						),
-					),
-				);
-			}
+		$clauses = Date_Facets::get_filter_clauses( Date_Facets::get_selected_values( $facets->get_selected() ) );
+		if ( empty( $clauses ) ) {
+			return $args;
+		}
+
+		$args = $this->ensure_post_filter_must( $args );
+		foreach ( $clauses as $clause ) {
+			$args['post_filter']['bool']['must'][] = $clause;
 		}
 
 		return $args;
 	}
 
 	/**
-	 * Add years + time_since aggregations to the EP query.
+	 * Give each facet aggregation the final post_filter minus that facet's own selection.
 	 *
-	 * @hook ep_formatted_args
+	 * Counts then show what each option would return, while every other facet
+	 * stays applied. VIP EP applies post_filter to all term aggs and EP's
+	 * set_agg_filters() overwrites the parent filter, so each child carries its own.
 	 *
-	 * @param array     $formatted_args The formatted args.
-	 * @param array     $args           The args.
-	 * @param \WP_Query $wp_query       The WP query.
-	 * @return array $formatted_args The formatted args.
-	 */
-	public function add_date_aggregations( $formatted_args, $args, $wp_query ) {
-		unset( $args, $wp_query );
-
-		// Full post_filter (all taxonomy facets) so date buckets reflect current selections.
-		$filter = $formatted_args['post_filter'] ?? array( 'match_all' => new \stdClass() );
-
-		if ( ! isset( $formatted_args['aggs']['terms']['aggs'] ) ) {
-			$formatted_args['aggs']['terms']['aggs'] = array();
-		}
-
-		$formatted_args['aggs']['terms']['aggs']['date_histogram'] = array(
-			'filter' => $filter,
-			'aggs'   => array(
-				'years' => array(
-					'terms' => array(
-						'field' => 'date_terms.year',
-						'order' => array( '_key' => 'desc' ),
-						'size'  => 75,
-					),
-				),
-			),
-		);
-
-		// Fixed time_since buckets as filters aggregation (doc counts per range).
-		$ranges = array();
-		foreach ( self::TIME_SINCE_RANGES as $slug => $relative ) {
-			$ranges[ $slug ] = array(
-				'filter' => array(
-					'range' => array(
-						'post_date' => array(
-							'gte' => gmdate( 'Y-m-d H:i:s', strtotime( $relative ) ),
-						),
-					),
-				),
-			);
-		}
-		$formatted_args['aggs']['terms']['aggs']['time_since'] = array(
-			'filter' => $filter,
-			'aggs'   => $ranges,
-		);
-
-		return $formatted_args;
-	}
-
-	/**
-	 * Make taxonomy aggregations disjunctive (exclude own taxonomy from agg filter).
-	 *
-	 * VIP EP 4.2.2 applies post_filter to all term aggs; without this, selecting
-	 * one Formats term zeroes sibling format counts.
-	 *
-	 * @hook ep_formatted_args
+	 * @hook ep_post_formatted_args
 	 *
 	 * @param array     $formatted_args Formatted ES args.
 	 * @param array     $args           WP query args.
 	 * @param \WP_Query $wp_query       Query.
 	 * @return array
 	 */
-	public function make_taxonomy_aggregations_disjunctive( $formatted_args, $args, $wp_query ) {
-		unset( $args, $wp_query );
+	public function finalize_facet_aggregations( $formatted_args, $args, $wp_query ) {
+		unset( $wp_query );
+
+		// EP builds the aggregation filter by formatting the query a second time.
+		if ( ! empty( $args['ep_facet_adding_agg_filters'] ) ) {
+			return $formatted_args;
+		}
 
 		if ( empty( $formatted_args['aggs']['terms']['aggs'] ) || ! is_array( $formatted_args['aggs']['terms']['aggs'] ) ) {
 			return $formatted_args;
@@ -864,15 +763,21 @@ class ElasticPress_Middleware {
 		// Parent filter must not re-apply all facet filters onto every child agg.
 		$formatted_args['aggs']['terms']['filter'] = array( 'match_all' => new \stdClass() );
 
-		$skip = array( 'date_histogram', 'time_since', 'years', 'year', 'months' );
 		foreach ( $formatted_args['aggs']['terms']['aggs'] as $agg_name => $agg_body ) {
-			if ( in_array( $agg_name, $skip, true ) ) {
-				continue;
-			}
-			if ( ! taxonomy_exists( $agg_name ) ) {
-				continue;
-			}
 			if ( ! is_array( $agg_body ) ) {
+				continue;
+			}
+
+			if ( isset( Date_Facets::AGGREGATIONS[ $agg_name ] ) ) {
+				$agg_body['filter'] = empty( $post_filter )
+					? array( 'match_all' => new \stdClass() )
+					: Date_Facets::post_filter_without_facet( $post_filter, Date_Facets::AGGREGATIONS[ $agg_name ] );
+
+				$formatted_args['aggs']['terms']['aggs'][ $agg_name ] = $agg_body;
+				continue;
+			}
+
+			if ( ! taxonomy_exists( $agg_name ) ) {
 				continue;
 			}
 
@@ -881,9 +786,8 @@ class ElasticPress_Middleware {
 				continue;
 			}
 
-			$exclusive = $this->post_filter_excluding_taxonomy( $post_filter, $agg_name );
 			$formatted_args['aggs']['terms']['aggs'][ $agg_name ] = array(
-				'filter' => $exclusive,
+				'filter' => $this->post_filter_excluding_taxonomy( $post_filter, $agg_name ),
 				'aggs'   => array(
 					$agg_name => $agg_body,
 				),
@@ -974,7 +878,7 @@ class ElasticPress_Middleware {
 
 		if ( isset( $response['aggregations']['terms']['time_since'] ) ) {
 			$GLOBALS['ep_facet_aggs']['time_since'] = array();
-			foreach ( array_keys( self::TIME_SINCE_RANGES ) as $slug ) {
+			foreach ( array_keys( Date_Facets::TIME_SINCE_RANGES ) as $slug ) {
 				$count = $response['aggregations']['terms']['time_since'][ $slug ]['doc_count'] ?? 0;
 				$GLOBALS['ep_facet_aggs']['time_since'][ $slug ] = (int) $count;
 			}

@@ -89,7 +89,7 @@ class ElasticPress_Facets_API {
 		}
 		$this->selected    = $this->get_selected( null, true );
 		$this->cache_key   = construct_cache_key( $query, $this->selected );
-		$this->cache_group = construct_cache_group() . '-ep-v2';
+		$this->cache_group = construct_cache_group() . '-ep-v3';
 	}
 
 	/**
@@ -103,31 +103,6 @@ class ElasticPress_Facets_API {
 			return '';
 		}
 		return $this->ep_facets->build_query_url( $filters );
-	}
-
-	/**
-	 * Merge non-taxonomy ep_filter_* values from $_GET into selected.
-	 *
-	 * @param array $selected Selected facets.
-	 * @return array
-	 */
-	protected function merge_non_taxonomy_selected_from_request( $selected ) {
-		$custom_keys = array( 'years', 'time_since' );
-		foreach ( $custom_keys as $facet_slug ) {
-			$param = 'ep_filter_' . $facet_slug;
-			$value = get_query_var( $param, null );
-			if ( null === $value || '' === $value || false === $value ) {
-				if ( isset( $_GET[ $param ] ) && is_string( $_GET[ $param ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-					$value = sanitize_text_field( wp_unslash( $_GET[ $param ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-				} else {
-					continue;
-				}
-			}
-			if ( is_string( $value ) && '' !== $value ) {
-				$selected[ $facet_slug ] = array_values( array_filter( array_map( 'trim', explode( ',', $value ) ) ) );
-			}
-		}
-		return $selected;
 	}
 
 	/**
@@ -154,9 +129,10 @@ class ElasticPress_Facets_API {
 				}
 				unset( $selected['taxonomies'] );
 			}
+			// Move the date facets (years, time_since) to the top level the same way.
+			$selected = array_merge( $selected, Date_Facets::get_selected_values( $selected ) );
+			unset( $selected[ Date_Facets::FILTER_TYPE ] );
 		}
-
-		$selected = $this->merge_non_taxonomy_selected_from_request( $selected );
 
 		if ( null !== $key && array_key_exists( $key, $selected ) ) {
 			return $selected[ $key ];
@@ -245,6 +221,7 @@ class ElasticPress_Facets_API {
 			'expandedChoices' => array(),
 			'selected'        => $this->get_selected( $taxonomy ),
 			'facetSlug'       => $taxonomy,
+			'urlParam'        => 'ep_filter_' . $taxonomy,
 		);
 		foreach ( $terms as $slug => $count ) {
 			$term = Facet_Term_Index::find( $taxonomy, $slug );
@@ -288,6 +265,7 @@ class ElasticPress_Facets_API {
 			'expandedChoices' => array(),
 			'selected'        => $this->get_selected( $facet_slug ),
 			'facetSlug'       => $facet_slug,
+			'urlParam'        => Date_Facets::url_param( $facet_slug ),
 		);
 		foreach ( $facets_data as $year => $count ) {
 			$selected                    = $datetime_facet['selected'];
@@ -316,12 +294,13 @@ class ElasticPress_Facets_API {
 	 * @return array
 	 */
 	protected function process_time_since_facet( $facets_data, $disabled = false ) {
-		$labels = ElasticPress_Middleware::get_time_since_choices();
+		$labels = Date_Facets::get_time_since_choices();
 		$facet  = array(
 			'choices'         => array(),
 			'expandedChoices' => array(),
 			'selected'        => $this->get_selected( 'time_since' ),
 			'facetSlug'       => 'time_since',
+			'urlParam'        => Date_Facets::url_param( 'time_since' ),
 		);
 		foreach ( $labels as $slug => $label ) {
 			$count             = isset( $facets_data[ $slug ] ) ? (int) $facets_data[ $slug ] : 0;

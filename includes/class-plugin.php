@@ -88,6 +88,7 @@ class Plugin {
 		$this->loader = new Loader();
 
 		require_once plugin_dir_path( __DIR__ ) . '/includes/providers/class-facet-term-index.php';
+		require_once plugin_dir_path( __DIR__ ) . '/includes/providers/class-date-facets.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/providers/class-elasticpress-middleware.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-admin-dataview-search.php';
 		require_once plugin_dir_path( __DIR__ ) . '/includes/class-rest-api.php';
@@ -146,7 +147,7 @@ class Plugin {
 	 * all date-based navigation goes through the faceted search system.
 	 *
 	 * Note: Year archives are excluded here because they are redirected to
-	 * /publications/?ep_filter_years=YYYY by publication-listing archive redirects.
+	 * /publications/?ep_date_years=YYYY by publication-listing archive redirects.
 	 *
 	 * @hook template_redirect
 	 * @return void

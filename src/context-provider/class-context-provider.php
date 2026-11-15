@@ -89,10 +89,10 @@ class Context_Provider {
 		unset( $parent_block_instance );
 		if ( 'prc-ep/facets-context-provider' === $parsed_block['blockName'] ) {
 			global $wp_query;
-			$facets_api       = new ElasticPress_Facets_API( $wp_query->query );
-			$this->facets     = $facets_api->get_facets();
-			$this->pagination = $facets_api->get_pagination();
-			$this->selected   = $facets_api->selected;
+			$facets_api        = new ElasticPress_Facets_API( $wp_query->query );
+			$this->facets      = $facets_api->get_facets();
+			$this->pagination  = $facets_api->get_pagination();
+			$this->selected    = $facets_api->selected;
 			$this->is_disabled = (bool) $facets_api->is_degraded;
 		}
 		return null;
@@ -112,7 +112,7 @@ class Context_Provider {
 			foreach ( $selected_values as $selected_value ) {
 				$label = $selected_value;
 				if ( 'time_since' === $selected_facet ) {
-					$labels = ElasticPress_Middleware::get_time_since_choices();
+					$labels = Date_Facets::get_time_since_choices();
 					$label  = $labels[ $selected_value ] ?? ucwords( str_replace( array( '-', '_' ), ' ', $selected_value ) );
 				} elseif ( taxonomy_exists( $selected_facet ) ) {
 					$term = get_term_by( 'slug', $selected_value, $selected_facet );
@@ -172,9 +172,9 @@ class Context_Provider {
 	/**
 	 * Render the block callback.
 	 *
-	 * @param mixed $attributes The attributes.
+	 * @param mixed  $attributes The attributes.
 	 * @param string $content The content.
-	 * @param mixed $block The block.
+	 * @param mixed  $block The block.
 	 * @return mixed
 	 */
 	public function render_block_callback( $attributes, $content, $block ) {

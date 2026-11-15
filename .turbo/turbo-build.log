@@ -11,7 +11,7 @@ assets by path [1m[32mtemplate/[39m[22m 22.7 KiB
   assets by chunk 4.14 KiB (name: template/style-index) 2 assets
   + 2 assets
 assets by path [1m[32mcontext-provider/[39m[22m 10.4 KiB
-  assets by path [1m[32mcontext-provider/*.php[39m[22m 6.32 KiB 2 assets
+  assets by path [1m[32mcontext-provider/*.php[39m[22m 6.31 KiB 2 assets
   assets by chunk 354 bytes (id hint: style) 2 assets
   + 2 assets
 assets by path [1m[32mresults-info/[39m[22m 4.83 KiB
@@ -36,10 +36,10 @@ built modules 2.46 KiB (css/mini-extract) 28.5 KiB (javascript) [1m[33m[built]
     [1m./src/results-info/index.js + 7 modules[39m[22m 3.72 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
     [1m./src/search-relevancy/index.js + 7 modules[39m[22m 4.54 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
     [1m./src/template/index.js + 18 modules[39m[22m 14.2 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 6857 ms
+webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 3279 ms
 
-assets by path [1m[32mtemplate/[39m[22m 10.3 KiB
-  asset [1m[32mtemplate/view.js[39m[22m 10.1 KiB [1m[32m[emitted][39m[22m [javascript module] [1m[32m[minimized][39m[22m (name: template/view)
+assets by path [1m[32mtemplate/[39m[22m 10.2 KiB
+  asset [1m[32mtemplate/view.js[39m[22m 9.98 KiB [1m[32m[emitted][39m[22m [javascript module] [1m[32m[minimized][39m[22m (name: template/view)
   asset [1m[32mtemplate/view.asset.php[39m[22m 203 bytes [1m[32m[emitted][39m[22m (name: template/view)
 assets by path [1m[32msearch-relevancy/[39m[22m 868 bytes
   asset [1m[32msearch-relevancy/view.js[39m[22m 738 bytes [1m[32m[emitted][39m[22m [javascript module] [1m[32m[minimized][39m[22m (name: search-relevancy/view)
@@ -49,12 +49,12 @@ assets by path [1m[32mresults-info/[39m[22m 513 bytes
   asset [1m[32mresults-info/view.asset.php[39m[22m 130 bytes [1m[32m[emitted][39m[22m (name: results-info/view)
 Entrypoint [1mresults-info/view[39m[22m 513 bytes = [1m[32mresults-info/view.js[39m[22m 383 bytes [1m[32mresults-info/view.asset.php[39m[22m 130 bytes
 Entrypoint [1msearch-relevancy/view[39m[22m 868 bytes = [1m[32msearch-relevancy/view.js[39m[22m 738 bytes [1m[32msearch-relevancy/view.asset.php[39m[22m 130 bytes
-Entrypoint [1mtemplate/view[39m[22m 10.3 KiB = [1m[32mtemplate/view.js[39m[22m 10.1 KiB [1m[32mtemplate/view.asset.php[39m[22m 203 bytes
-orphan modules 19.3 KiB [1m[33m[orphan][39m[22m 31 modules
-built modules 32.2 KiB [1m[33m[built][39m[22m
+Entrypoint [1mtemplate/view[39m[22m 10.2 KiB = [1m[32mtemplate/view.js[39m[22m 9.98 KiB [1m[32mtemplate/view.asset.php[39m[22m 203 bytes
+orphan modules 27.5 KiB [1m[33m[orphan][39m[22m 32 modules
+built modules 34.3 KiB [1m[33m[built][39m[22m
   [1m./src/results-info/view.js + 1 modules[39m[22m 902 bytes [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
   [1m./src/search-relevancy/view.js + 1 modules[39m[22m 1.42 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-  [1m./src/template/view.js + 7 modules[39m[22m 29.9 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+  [1m./src/template/view.js + 8 modules[39m[22m 31.9 KiB [1m[31m[not cacheable][39m[22m [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
   [1mexternal "@wordpress/interactivity-router"[39m[22m 42 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
-webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 6059 ms
+webpack 5.106.2 compiled [1m[32msuccessfully[39m[22m in 2851 ms
 Block metadata PHP file generated at: build/blocks-manifest.php
