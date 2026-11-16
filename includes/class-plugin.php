@@ -163,19 +163,27 @@ class Plugin {
 	}
 
 	/**
-	 * Manage the robots.txt file and hide /search pages from Googlebot.
+	 * Hide /search pages from all crawlers in robots.txt.
+	 *
+	 * The rules go in the `User-agent: *` group. A crawler with its own
+	 * group ignores the `*` group, so do not add a per-crawler group here.
+	 *
+	 * @hook robots_txt
 	 *
 	 * @param string $output The output.
 	 * @param bool   $public Whether the site is public.
 	 * @return string
 	 */
 	public function manage_robots_txt( $output, $public ) {
-		// Blocking internal /search pages from Googlebot.
-		$output .= 'User-agent: Googlebot' . PHP_EOL;
-		$output .= 'Disallow: /search/' . PHP_EOL;
-		$output .= 'Disallow: /search' . PHP_EOL;
-		$output .= 'Disallow: /?s=' . PHP_EOL;
-		return $output;
+		$rules = array( 'Disallow: /search/', 'Disallow: /search', 'Disallow: /?s=' );
+		$lines = preg_split( '/\R/', (string) $output );
+		foreach ( $lines as $i => $line ) {
+			if ( preg_match( '/^\s*User-agent:\s*\*\s*$/i', $line ) ) {
+				array_splice( $lines, $i + 1, 0, $rules );
+				return implode( "\n", $lines );
+			}
+		}
+		return "User-agent: *\n" . implode( "\n", $rules ) . "\n" . $output;
 	}
 
 	/**

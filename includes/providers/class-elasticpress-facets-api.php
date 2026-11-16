@@ -129,6 +129,12 @@ class ElasticPress_Facets_API {
 				}
 				unset( $selected['taxonomies'] );
 			}
+			// EP passes public taxonomy query vars (?formats=report,feature) through as raw strings.
+			foreach ( $selected as $slug => $value ) {
+				if ( is_string( $value ) && taxonomy_exists( $slug ) ) {
+					$selected[ $slug ] = preg_split( '/[,+\s]+/', $value, -1, PREG_SPLIT_NO_EMPTY );
+				}
+			}
 			// Move the date facets (years, time_since) to the top level the same way.
 			$selected = array_merge( $selected, Date_Facets::get_selected_values( $selected ) );
 			unset( $selected[ Date_Facets::FILTER_TYPE ] );
