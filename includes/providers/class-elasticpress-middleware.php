@@ -43,6 +43,24 @@ class ElasticPress_Middleware {
 	const MAX_NAVIGABLE_PAGE = 100;
 
 	/**
+	 * Terms aggregation size for taxonomies with more than 100 terms.
+	 *
+	 * Live term counts (read-only REST totals, 2026-11-16): bylines 630,
+	 * category 437 (18 top-level), formats 23, research-teams 14,
+	 * regions-countries 21. Facet UI shows only top-level terms, but child terms
+	 * still take bucket slots, so category needs room for all of them.
+	 */
+	const FACET_TAXONOMY_SIZES = array(
+		'bylines'  => 1000,
+		'category' => 500,
+	);
+
+	/**
+	 * Terms aggregation size for every other taxonomy.
+	 */
+	const DEFAULT_FACET_TAXONOMY_SIZE = 100;
+
+	/**
 	 * Check if debug mode is enabled.
 	 *
 	 * @return bool True if debug mode is enabled.
@@ -91,7 +109,8 @@ class ElasticPress_Middleware {
 			$loader->add_filter( 'posts_pre_query', $this, 'short_circuit_pub_listing_pages_past_ep_window', 10, 2 );
 			$loader->add_filter( 'the_posts', $this, 'cap_pub_listing_max_num_pages', 10, 2 );
 			$loader->add_action( 'template_redirect', $this, 'not_found_pub_listing_pages_past_ep_window', 0 );
-			$loader->add_filter( 'ep_is_facetable', $this, 'ensure_pub_listing_facetable', 10, 2 );
+			// Before EP's facet_query (10) reads the ep_is_facetable query arg.
+			$loader->add_action( 'pre_get_posts', $this, 'ensure_pub_listing_facetable', 9, 1 );
 			$loader->add_filter( 'ep_facet_types', $this, 'register_date_facet_type' );
 			$loader->add_filter( 'ep_facet_include_taxonomies', $this, 'register_facets' );
 			$loader->add_filter( 'ep_post_formatted_args', $this, 'add_filters_to_query', 10, 3 );
@@ -100,6 +119,8 @@ class ElasticPress_Middleware {
 			$loader->add_filter( 'ep_valid_response', $this, 'include_date_aggregation_in_response', 19, 4 );
 			$loader->add_filter( 'ep_valid_response', $this, 'remap_disjunctive_taxonomy_aggs', 20, 4 );
 			$loader->add_filter( 'ep_facet_taxonomies_size', $this, 'set_facet_taxonomies_size', 10, 2 );
+			// Last word on the facet aggregation list, after every EP facet type has added its own.
+			$loader->add_filter( 'ep_facet_wp_query_aggs_facet', $this, 'remove_unused_aggregations', 99 );
 			$loader->add_filter( 'ep_set_sort', $this, 'sort_ep_by_date', 20, 2 );
 			$loader->add_filter( 'query_vars', $this, 'register_query_vars' );
 
@@ -257,35 +278,71 @@ class ElasticPress_Middleware {
 	}
 
 	/**
-	 * Ensure pub-listing and dataset archive main queries are facetable.
+	 * Ensure pub-listing and dataset archive queries are facetable.
 	 *
-	 * @hook ep_is_facetable
+	 * Sets the `ep_is_facetable` WP_Query arg (ElasticPress 5.3.0+). An explicit
+	 * value set by another caller wins. Other plugins can opt a query in, or opt
+	 * a default query out, with the `prc_elasticpress_is_facetable` filter.
 	 *
-	 * @param bool      $is_facetable Whether the query is facetable.
-	 * @param \WP_Query $query        The query.
-	 * @return bool
+	 * @hook pre_get_posts
+	 *
+	 * @param \WP_Query $query The query.
 	 */
-	public function ensure_pub_listing_facetable( $is_facetable, $query ) {
-		if ( $query->get( 'isPubListingQuery' ) ) {
-			return true;
+	public function ensure_pub_listing_facetable( $query ) {
+		if ( null !== $query->get( 'ep_is_facetable', null ) ) {
+			return;
 		}
-		if ( $query->is_main_query() && $query->is_post_type_archive( 'dataset' ) ) {
-			return true;
+
+		$default = $query->get( 'isPubListingQuery' ) || ( $query->is_main_query() && $query->is_post_type_archive( 'dataset' ) );
+
+		/**
+		 * Filters whether a query should be marked facetable for ElasticPress.
+		 *
+		 * @param bool      $is_facetable Whether the query is facetable. True for pub-listing queries and the dataset archive.
+		 * @param \WP_Query $query        The query.
+		 */
+		$is_facetable = (bool) apply_filters( 'prc_elasticpress_is_facetable', $default, $query );
+
+		if ( $is_facetable ) {
+			$query->set( 'ep_is_facetable', true );
+		} elseif ( $default ) {
+			$query->set( 'ep_is_facetable', false );
 		}
-		return $is_facetable;
 	}
 
 	/**
-	 * Set the size of the taxonomy facets, how many records to return.
+	 * Set the size of the taxonomy facets, how many buckets ES returns.
+	 *
+	 * ES returns exact counts only when size covers every term. Terms outside the
+	 * returned buckets would render as (0), so bylines and category are sized above
+	 * their term counts (630 bylines, 437 category terms including children).
 	 *
 	 * @hook ep_facet_taxonomies_size
-	 * @param int    $size The size.
-	 * @param string $taxonomy The taxonomy.
+	 * @param int                $size     The size.
+	 * @param WP_Taxonomy|string $taxonomy The taxonomy object (as passed by ElasticPress) or slug.
 	 * @return int $size The size.
 	 */
 	public function set_facet_taxonomies_size( $size, $taxonomy ) {
-		$size = 100; // We don't really have that many terms to return for formats or categories, but bylines is a different story. That said, this should return the highest counts first so this works out in the end.
-		return $size;
+		unset( $size );
+		$slug = is_object( $taxonomy ) ? $taxonomy->name : $taxonomy;
+		return self::FACET_TAXONOMY_SIZES[ $slug ] ?? self::DEFAULT_FACET_TAXONOMY_SIZE;
+	}
+
+	/**
+	 * Drop aggregations no PRC facet block reads.
+	 *
+	 * EP adds a `post_type` terms aggregation (size 10000). The PRC facets UI
+	 * never renders it and no `ep_filter_post_type` URL is used.
+	 *
+	 * @hook ep_facet_wp_query_aggs_facet
+	 * @param array $facet_aggs Facet aggregations.
+	 * @return array
+	 */
+	public function remove_unused_aggregations( $facet_aggs ) {
+		if ( is_array( $facet_aggs ) ) {
+			unset( $facet_aggs['post_type'] );
+		}
+		return $facet_aggs;
 	}
 
 	/**
@@ -798,7 +855,27 @@ class ElasticPress_Middleware {
 	}
 
 	/**
-	 * Remap nested disjunctive taxonomy buckets into $GLOBALS['ep_facet_aggs'].
+	 * Merge facet buckets into the aggregations stored on the query object.
+	 *
+	 * EP's own get_aggs() (priority 10) stores the flat aggregations first. The
+	 * hooks below add the nested disjunctive buckets and the date buckets.
+	 *
+	 * @param \WP_Query $query_object Query that ran.
+	 * @param array     $buckets      Facet slug => ( key => count ).
+	 */
+	private function merge_query_aggregations( $query_object, array $buckets ) {
+		if ( empty( $buckets ) ) {
+			return;
+		}
+		$existing = $this->ep_facets->get_query_aggregations( $query_object );
+		$this->ep_facets->set_query_aggregations(
+			$query_object,
+			array_merge( is_array( $existing ) ? $existing : array(), $buckets )
+		);
+	}
+
+	/**
+	 * Remap nested disjunctive taxonomy buckets onto the query's aggregations.
 	 *
 	 * @hook ep_valid_response
 	 *
@@ -815,10 +892,7 @@ class ElasticPress_Middleware {
 			return $response;
 		}
 
-		if ( ! isset( $GLOBALS['ep_facet_aggs'] ) || ! is_array( $GLOBALS['ep_facet_aggs'] ) ) {
-			$GLOBALS['ep_facet_aggs'] = array();
-		}
-
+		$remapped   = array();
 		$terms_aggs = $response['aggregations']['terms'] ?? array();
 		foreach ( $terms_aggs as $tax => $payload ) {
 			if ( ! taxonomy_exists( $tax ) || ! is_array( $payload ) ) {
@@ -833,20 +907,22 @@ class ElasticPress_Middleware {
 			if ( null === $buckets ) {
 				continue;
 			}
-			$GLOBALS['ep_facet_aggs'][ $tax ] = array();
+			$remapped[ $tax ] = array();
 			foreach ( $buckets as $bucket ) {
 				if ( ! isset( $bucket['key'] ) ) {
 					continue;
 				}
-				$GLOBALS['ep_facet_aggs'][ $tax ][ $bucket['key'] ] = (int) ( $bucket['doc_count'] ?? 0 );
+				$remapped[ $tax ][ $bucket['key'] ] = (int) ( $bucket['doc_count'] ?? 0 );
 			}
 		}
+
+		$this->merge_query_aggregations( $query_object, $remapped );
 
 		return $response;
 	}
 
 	/**
-	 * Copy custom aggregations into $GLOBALS['ep_facet_aggs'] for the Facets API.
+	 * Add the date aggregations (years, time_since) to the query's aggregations.
 	 *
 	 * @hook ep_valid_response
 	 * @param  array $response ES response.
@@ -862,27 +938,23 @@ class ElasticPress_Middleware {
 			return $response;
 		}
 
-		if ( ! isset( $GLOBALS['ep_facet_aggs'] ) || ! is_array( $GLOBALS['ep_facet_aggs'] ) ) {
-			$GLOBALS['ep_facet_aggs'] = array();
-		}
+		$date_buckets = array();
 
 		if ( isset( $response['aggregations']['terms']['date_histogram']['years']['buckets'] ) ) {
-			$years = $response['aggregations']['terms']['date_histogram']['years']['buckets'] ?? array();
-
-			$GLOBALS['ep_facet_aggs']['years'] = array();
-
-			foreach ( $years as $bucket ) {
-				$GLOBALS['ep_facet_aggs']['years'][ $bucket['key'] ] = $bucket['doc_count'];
+			$date_buckets['years'] = array();
+			foreach ( $response['aggregations']['terms']['date_histogram']['years']['buckets'] as $bucket ) {
+				$date_buckets['years'][ $bucket['key'] ] = $bucket['doc_count'];
 			}
 		}
 
 		if ( isset( $response['aggregations']['terms']['time_since'] ) ) {
-			$GLOBALS['ep_facet_aggs']['time_since'] = array();
+			$date_buckets['time_since'] = array();
 			foreach ( array_keys( Date_Facets::TIME_SINCE_RANGES ) as $slug ) {
-				$count = $response['aggregations']['terms']['time_since'][ $slug ]['doc_count'] ?? 0;
-				$GLOBALS['ep_facet_aggs']['time_since'][ $slug ] = (int) $count;
+				$date_buckets['time_since'][ $slug ] = (int) ( $response['aggregations']['terms']['time_since'][ $slug ]['doc_count'] ?? 0 );
 			}
 		}
+
+		$this->merge_query_aggregations( $query_object, $date_buckets );
 
 		return $response;
 	}

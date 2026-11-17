@@ -114,14 +114,15 @@ class Date_Facets {
 	}
 
 	/**
-	 * Start of a time_since range.
+	 * Start of a time_since range, rounded down to the start of the UTC day so
+	 * the ES query body repeats all day and stays cacheable.
 	 *
 	 * @param string $range_slug A key of TIME_SINCE_RANGES.
 	 * @return string
 	 */
 	private static function range_start( $range_slug ) {
 		if ( ! isset( self::$range_starts[ $range_slug ] ) ) {
-			self::$range_starts[ $range_slug ] = gmdate( 'Y-m-d H:i:s', strtotime( self::TIME_SINCE_RANGES[ $range_slug ] ) );
+			self::$range_starts[ $range_slug ] = gmdate( 'Y-m-d 00:00:00', strtotime( self::TIME_SINCE_RANGES[ $range_slug ] ) );
 		}
 		return self::$range_starts[ $range_slug ];
 	}

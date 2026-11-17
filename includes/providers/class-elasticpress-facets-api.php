@@ -166,8 +166,8 @@ class ElasticPress_Facets_API {
 			$this->is_degraded = true;
 			return null;
 		}
-		global $ep_facet_aggs;
-		$aggs = is_array( $ep_facet_aggs ) ? $ep_facet_aggs : array();
+		$aggs = $this->ep_facets->get_query_aggregations( $wp_query );
+		$aggs = is_array( $aggs ) ? $aggs : array();
 
 		foreach ( $aggs as $facet_slug => $facets_data ) {
 			// Handle Year / time_since.
